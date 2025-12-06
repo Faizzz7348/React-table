@@ -27,11 +27,13 @@ import {
   Edit,
   GripVertical,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 import lightGallery from 'lightgallery'
 import 'lightgallery/css/lightgallery.css'
-import EditRowModal from './EditRowModal'
+import { useEditMode } from '../context/EditModeContext'
 import './DataTable.css'
 
 // Mock data generator
@@ -58,8 +60,90 @@ const generateMockData = (count = 50) => {
   }))
 }
 
+// Editable Cell Component
+const EditableCell = ({ value, onSave, type = 'text', options = [], isEditMode }) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      if (type === 'text') {
+        inputRef.current.select()
+      }
+    }
+  }, [isEditing, type])
+
+  const handleSave = () => {
+    onSave(editValue)
+    setIsEditing(false)
+  }
+
+  const handleCancel = () => {
+    setEditValue(value)
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSave()
+    } else if (e.key === 'Escape') {
+      handleCancel()
+    }
+  }
+
+  const handleClick = () => {
+    if (isEditMode) {
+      setIsEditing(true)
+    }
+  }
+
+  if (isEditing) {
+    if (type === 'select') {
+      return (
+        <div className="editable-cell editing">
+          <select
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            className="editable-select"
+          >
+            {options.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    return (
+      <div className="editable-cell editing">
+        <input
+          ref={inputRef}
+          type={type}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          className="editable-input"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className={`editable-cell ${!isEditMode ? 'read-only' : ''}`} onClick={handleClick}>
+      <span className="editable-value">{value}</span>
+      {isEditMode && <Edit size={12} className="edit-icon" />}
+    </div>
+  )
+}
+
 // Sortable Row Component
-const SortableRow = ({ item, index, indexOfFirstItem, visibleColumns, showInfo, togglePower, onEdit }) => {
+const SortableRow = ({ item, index, indexOfFirstItem, visibleColumns, showInfo, togglePower, onUpdateCell, isEditMode }) => {
   const {
     attributes,
     listeners,
@@ -87,21 +171,61 @@ const SortableRow = ({ item, index, indexOfFirstItem, visibleColumns, showInfo, 
           </div>
         </td>
       )}
-      {visibleColumns.code && <td>{item.code}</td>}
-      {visibleColumns.name && <td>{item.name}</td>}
-      {visibleColumns.delivery && <td>{item.delivery}</td>}
-      {visibleColumns.route && <td>{item.route}</td>}
-      {visibleColumns.kilometer && <td>{item.kilometer} km</td>}
+      {visibleColumns.code && (
+        <td>
+          <EditableCell
+            value={item.code}
+            onSave={(value) => onUpdateCell(item.id, 'code', value)}
+            type="text"
+            isEditMode={isEditMode}
+          />
+        </td>
+      )}
+      {visibleColumns.name && (
+        <td>
+          <EditableCell
+            value={item.name}
+            onSave={(value) => onUpdateCell(item.id, 'name', value)}
+            type="text"
+            isEditMode={isEditMode}
+          />
+        </td>
+      )}
+      {visibleColumns.delivery && (
+        <td>
+          <EditableCell
+            value={item.delivery}
+            onSave={(value) => onUpdateCell(item.id, 'delivery', value)}
+            type="select"
+            options={['Express', 'Standard', 'Economy', 'Premium']}
+            isEditMode={isEditMode}
+          />
+        </td>
+      )}
+      {visibleColumns.route && (
+        <td>
+          <EditableCell
+            value={item.route}
+            onSave={(value) => onUpdateCell(item.id, 'route', value)}
+            type="select"
+            options={['Route A', 'Route B', 'Route C', 'Route D', 'Route E']}
+            isEditMode={isEditMode}
+          />
+        </td>
+      )}
+      {visibleColumns.kilometer && (
+        <td>
+          <EditableCell
+            value={item.kilometer}
+            onSave={(value) => onUpdateCell(item.id, 'kilometer', parseInt(value) || 0)}
+            type="number"
+            isEditMode={isEditMode}
+          />
+        </td>
+      )}
       {visibleColumns.action && (
         <td>
           <div className="action-buttons">
-            <button
-              className="action-btn edit-btn"
-              onClick={() => onEdit(item)}
-              title="Edit row"
-            >
-              <Edit size={16} />
-            </button>
             <a
               href={item.image}
               className="action-btn gallery-item"
@@ -129,6 +253,7 @@ const SortableRow = ({ item, index, indexOfFirstItem, visibleColumns, showInfo, 
 }
 
 const DataTable = () => {
+  const { isEditMode } = useEditMode()
   const [data, setData] = useState(generateMockData())
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [filterText, setFilterText] = useState('')
@@ -144,8 +269,7 @@ const DataTable = () => {
     action: true
   })
   const [showColumnMenu, setShowColumnMenu] = useState(false)
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [editingRow, setEditingRow] = useState(null)
+  const [showSortTooltip, setShowSortTooltip] = useState(false)
   const galleryRef = useRef(null)
   const lgInstance = useRef(null)
 
@@ -205,25 +329,25 @@ const DataTable = () => {
 
   // Sort handler
   const handleSort = (key) => {
-    let direction = 'asc'
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') {
+        // First click was asc, now go to desc
+        setSortConfig({ key, direction: 'desc' })
+      } else if (sortConfig.direction === 'desc') {
+        // Second click was desc, now reset to no sort
+        setSortConfig({ key: null, direction: 'asc' })
+      }
+    } else {
+      // New column, start with asc
+      setSortConfig({ key, direction: 'asc' })
     }
-    setSortConfig({ key, direction })
   }
 
-  // Edit row handlers
-  const handleEdit = (row) => {
-    setEditingRow(row)
-    setEditModalOpen(true)
-  }
-
-  const handleSaveEdit = (id, updates) => {
+  // Update cell value (inline editing)
+  const handleUpdateCell = (id, field, value) => {
     setData(data.map(item => 
-      item.id === id ? { ...item, ...updates } : item
+      item.id === id ? { ...item, [field]: value } : item
     ))
-    setEditModalOpen(false)
-    setEditingRow(null)
   }
 
   // Drag and drop handler
@@ -295,6 +419,30 @@ const DataTable = () => {
           </div>
         </div>
         <div className="toolbar-right">
+          {/* Sort Button */}
+          <div className="sort-button-container">
+            <button
+              className="toolbar-btn"
+              onClick={() => {
+                setShowSortTooltip(true)
+                setTimeout(() => setShowSortTooltip(false), 2000)
+              }}
+            >
+              {sortConfig.key === null ? (
+                <ArrowUpDown size={18} />
+              ) : sortConfig.direction === 'asc' ? (
+                <ArrowUp size={18} />
+              ) : (
+                <ArrowDown size={18} />
+              )}
+            </button>
+            {showSortTooltip && (
+              <div className="sort-tooltip">
+                Click the column to sort
+              </div>
+            )}
+          </div>
+
           <div className="column-visibility">
             <button
               className="toolbar-btn"
@@ -330,7 +478,7 @@ const DataTable = () => {
         <table className="data-table">
           <thead>
             <tr>
-              {visibleColumns.no && <th style={{ width: '60px' }}>No</th>}
+              {visibleColumns.no && <th style={{ width: '60px', textAlign: 'center' }}>No</th>}
               {visibleColumns.code && (
                 <th onClick={() => handleSort('code')} className="sortable">
                   <div className="th-content">
@@ -394,7 +542,8 @@ const DataTable = () => {
                     visibleColumns={visibleColumns}
                     showInfo={showInfo}
                     togglePower={togglePower}
-                    onEdit={handleEdit}
+                    onUpdateCell={handleUpdateCell}
+                    isEditMode={isEditMode}
                   />
                 ))}
               </tbody>
@@ -469,17 +618,6 @@ const DataTable = () => {
           </button>
         </div>
       </div>
-
-      {/* Edit Row Modal */}
-      <EditRowModal 
-        isOpen={editModalOpen}
-        onClose={() => {
-          setEditModalOpen(false)
-          setEditingRow(null)
-        }}
-        rowData={editingRow}
-        onSave={handleSaveEdit}
-      />
     </div>
   )
 }

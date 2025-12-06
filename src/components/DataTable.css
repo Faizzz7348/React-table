@@ -99,6 +99,79 @@
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
+/* Sort Button Container */
+.sort-button-container {
+  position: relative;
+}
+
+.sort-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px var(--shadow);
+  border: 1px solid var(--border-color);
+  z-index: 1000;
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.sort-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--border-color);
+}
+
+.sort-tooltip::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--bg-secondary);
+}
+
+[data-theme="terminal"] .sort-tooltip {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+  font-family: 'Courier New', monospace;
+}
+
+[data-theme="terminal"] .sort-tooltip::before {
+  border-bottom-color: var(--accent);
+}
+
+[data-theme="terminal"] .sort-tooltip::after {
+  border-bottom-color: var(--bg-secondary);
+}
+
 .column-visibility {
   position: relative;
 }
@@ -158,6 +231,7 @@
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
+  font-size: 14px;
 }
 
 [data-theme="terminal"] .data-table th {
@@ -180,6 +254,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.th-content svg {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .data-table tbody tr {
@@ -224,6 +303,8 @@
   align-items: center;
   color: var(--text-secondary);
   transition: color 0.2s;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .drag-handle:hover {
@@ -235,6 +316,18 @@
 }
 
 .drag-handle:active {
+  cursor: grabbing;
+}
+
+.no-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: grab;
+}
+
+.no-cell:active {
   cursor: grabbing;
 }
 
@@ -255,6 +348,97 @@
 
 [data-theme="terminal"] .edit-btn:hover {
   box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* Inline Editable Cell Styling */
+.editable-cell {
+  position: relative;
+  cursor: pointer;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.editable-cell.read-only {
+  cursor: default;
+}
+
+.editable-cell:not(.read-only):hover {
+  background: var(--table-row-hover);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.editable-value {
+  flex: 1;
+  text-align: center;
+}
+
+.edit-icon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.editable-cell:not(.read-only):hover .edit-icon {
+  opacity: 1;
+}
+
+.editable-cell.editing {
+  background: var(--button-bg);
+  box-shadow: 0 0 0 2px var(--accent);
+  padding: 4px;
+}
+
+.editable-input,
+.editable-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-align: center;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.editable-input:focus,
+.editable-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+[data-theme="terminal"] .editable-cell:hover {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+[data-theme="terminal"] .editable-cell.editing {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+[data-theme="terminal"] .editable-input,
+[data-theme="terminal"] .editable-select {
+  font-family: 'Courier New', monospace;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+[data-theme="terminal"] .editable-input:focus,
+[data-theme="terminal"] .editable-select:focus {
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+[data-theme="terminal"] .edit-icon {
+  color: var(--accent);
+  text-shadow: 0 0 5px var(--accent);
 }
 
 /* Action Buttons */
